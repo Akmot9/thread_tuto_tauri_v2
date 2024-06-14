@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod state;
-use state::ThreadManager;
+use state::thread_manager::ThreadManager;
 
 mod commands;
 use commands::{add_thread, stop_thread, get_thread_ids};

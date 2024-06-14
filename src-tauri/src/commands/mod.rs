@@ -2,7 +2,7 @@ use tauri::AppHandle;
 use tauri::State;
 use tauri::command;
 
-use crate::state::ThreadManager;
+use crate::state::thread_manager::ThreadManager;
 
 
 #[command]
