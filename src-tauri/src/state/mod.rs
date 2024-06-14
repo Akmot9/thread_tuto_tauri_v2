@@ -44,6 +44,7 @@ impl ThreadManager {
     pub fn new(app: &tauri::App) -> Self {
         let (tx, rx): (Sender<Message>, Receiver<Message>) = mpsc::channel();
 
+        let app = Arc::new(app);
         // Spawn the default receiver thread
         let receiver_handle = thread::spawn(move || {
             let collection = MyHashMap::new();
