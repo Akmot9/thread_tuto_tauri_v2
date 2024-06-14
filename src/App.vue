@@ -38,6 +38,19 @@ export default {
       } catch (e) {
         console.error(e);
       }
+      this.threads.forEach(id => {
+        listen(`thread-${id}`, (event) => {
+          console.log('Événement reçu:', event);
+          // Mettre à jour l'état du composant ou effectuer d'autres actions
+          //this.$set(this.counters, id, event.payload);
+        })
+          .then(() => {
+            console.log(`Écouteur d'événements Tauri configuré avec succès pour le thread ${id}`);
+          })
+          .catch((error) => {
+            console.error(`Erreur lors de la configuration de l'écouteur d'événements Tauri pour le thread ${id}:`, error);
+          });
+      });
       
     },
 
@@ -60,17 +73,6 @@ export default {
     mounted() {
       this.fetchThreads();
       
-      listen('thread-1', (event) => {
-      console.log('Événement reçu:', event);
-      // Mettre à jour l'état du composant ou effectuer d'autres actions
-      })
-      .then(() => {
-        console.log("Écouteur d'événements Tauri configuré avec succès");
-      })
-      .catch((error) => {
-        console.error("Erreur lors de la configuration de l'écouteur d'événements Tauri:", error);
-      });
-
     },
     
   }
