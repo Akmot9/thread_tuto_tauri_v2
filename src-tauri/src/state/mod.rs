@@ -1,13 +1,11 @@
 use serde::Serialize;
-use serde_json::json;
 use std::{
     collections::HashMap,
     sync::{
         mpsc::{self, Receiver, Sender},
         Arc, Mutex,
     },
-    thread,
-    time::Duration,
+    thread, time::Duration,
 };
 use tauri::{AppHandle, Manager};
 
@@ -69,7 +67,7 @@ impl ThreadManager {
             for received in rx {
                 collection.add(received);
                 let _ = collection.send_serialised(app.clone());
-                
+                thread::sleep(Duration::from_secs(2));
             }
         });
 
