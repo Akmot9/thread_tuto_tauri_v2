@@ -19,6 +19,7 @@
 
 <script>
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 export default {
   name: 'App',
@@ -37,6 +38,7 @@ export default {
       } catch (e) {
         console.error(e);
       }
+      
     },
 
     async addThread() {
@@ -55,10 +57,23 @@ export default {
       this.fetchThreads();
     },
 
-  },
-  mounted() {
-    this.fetchThreads();
-  },
+    mounted() {
+      this.fetchThreads();
+      
+      listen('thread-1', (event) => {
+      console.log('Événement reçu:', event);
+      // Mettre à jour l'état du composant ou effectuer d'autres actions
+      })
+      .then(() => {
+        console.log("Écouteur d'événements Tauri configuré avec succès");
+      })
+      .catch((error) => {
+        console.error("Erreur lors de la configuration de l'écouteur d'événements Tauri:", error);
+      });
+
+    },
+    
+  }
 };
 </script>
 

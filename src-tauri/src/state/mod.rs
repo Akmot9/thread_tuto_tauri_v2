@@ -41,7 +41,10 @@ impl TreadObject {
                 }
                 counter += 1;
                 println!("Thread {}: counter: {}", id, counter);
-                app.emit(&format!("thread-{}", id), counter).unwrap();
+                match app.emit(&format!("thread-{}", id), counter) {
+                    Ok(_) => println!("Thread {}: counter: {}", id, counter),
+                    Err(e) => println!("Failed to emit event for thread {}: {}", id, e),
+                }
                 thread::sleep(Duration::from_secs(rate as u64));
             }
         });
