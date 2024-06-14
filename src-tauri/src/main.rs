@@ -6,10 +6,16 @@ use state::ThreadManager;
 mod commands;
 use commands::{add_thread, stop_thread, get_thread_ids};
 
+use tauri::Manager;
+
 
 fn main() {
+
     tauri::Builder::default()
-        .manage(ThreadManager::new())
+        .setup(|app| {
+          app.manage(ThreadManager::new(app));
+          Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             add_thread, 
             stop_thread, 

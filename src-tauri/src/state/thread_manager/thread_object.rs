@@ -1,9 +1,29 @@
-use std::fmt::Display;
-use std::sync::{Arc, Mutex};
+use std::fmt::{self, Display};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
+use serde::Serialize;
 use tauri::{AppHandle, Manager};
+
+#[derive(Debug, Default, Serialize, Clone, Eq, Hash, PartialEq)]
+pub struct Message {
+    id: u32,
+    count: u32
+}
+
+impl Message {
+    pub fn new(id: u32, count: u32) -> Self {
+        Self { id, count }
+    }
+}
+
+impl std::fmt::Display for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Message {{ id: {}, count: {} }}", self.id, self.count)
+    }
+}
+
 
 /// Structure représentant un thread avec un identifiant, un statut, une fréquence et un handle.
 pub struct TreadObject {
@@ -24,7 +44,7 @@ impl TreadObject {
     /// # Returns
     ///
     /// Retourne une nouvelle instance de `TreadObject`.
-    pub fn new(id: u32, rate: u32, app: AppHandle) -> Self {
+    pub fn new(id: u32, rate: u32, app: AppHandle, sender: mpsc::Sender<Message>) -> Self {
         let status = Arc::new(Mutex::new(true));
         let status_clone = Arc::clone(&status);
 
@@ -44,6 +64,10 @@ impl TreadObject {
                     Ok(_) => println!("Thread {}: counter: {}", id, counter),
                     Err(e) => println!("Failed to emit event for thread {}: {}", id, e),
                 }
+
+                let message= Message::new(id,counter);
+                sender.send(message).unwrap();
+
                 thread::sleep(Duration::from_secs(rate as u64));
             }
         });
