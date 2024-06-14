@@ -13,7 +13,7 @@ fn main() {
 
     tauri::Builder::default()
         .setup(|app| {
-          app.manage(ThreadManager::new(app));
+          app.manage(ThreadManager::new(app.handle().clone()));
           Ok(())
         })
         .invoke_handler(tauri::generate_handler![
