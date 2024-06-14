@@ -33,12 +33,12 @@ impl MyHashMap {
 
     }
 
-    fn send_serialised(&self, app: AppHandle) -> Result<(), String> {
+    fn send_serialised(&self, app: AppHandle, event: &str) -> Result<(), String> {
         let hashmap_locked = self.hashmap.lock().unwrap();
         let hashmap_data: Vec<_> = hashmap_locked.iter().map(|(k, &v)| (k.clone(), v)).collect();
 
         println!("{:?}",hashmap_data);
-        match app.emit("hashmap", &hashmap_data) {
+        match app.emit(event, &hashmap_data) {
             Ok(_) => {
                 println!("hashmap emitted successfully");
                 Ok(())
@@ -60,13 +60,28 @@ pub struct ThreadManager {
 impl ThreadManager {
     pub fn new(app: AppHandle) -> Self {
         let (tx, rx): (Sender<Message>, Receiver<Message>) = mpsc::channel();
+        let (tx_fifo, rx_fifo): (Sender<Message>, Receiver<Message>) = mpsc::channel();
+        let app_clone = app.clone();
+
+        // Spawn the default receiver thread
+        let _fifo_handle = thread::spawn(move || {
+            let fifo_collection = MyHashMap::new();
+            for received in rx_fifo {
+                let fifo = "fifo";
+                fifo_collection.add(received.clone());
+                let _ = fifo_collection.send_serialised(app.clone(), fifo);
+                let _ = tx.send(received);
+                
+            }
+        });
 
         // Spawn the default receiver thread
         let _receiver_handle = thread::spawn(move || {
             let collection = MyHashMap::new();
             for received in rx {
+                let hashmap = "hashmap";
                 collection.add(received);
-                let _ = collection.send_serialised(app.clone());
+                let _ = collection.send_serialised(app_clone.clone(), hashmap);
                 thread::sleep(Duration::from_secs(2));
             }
         });
@@ -74,7 +89,7 @@ impl ThreadManager {
         Self {
             threads: Arc::new(Mutex::new(HashMap::new())),
             next_id: Arc::new(Mutex::new(1)),
-            sender: tx,
+            sender: tx_fifo,
         }
     }
 
