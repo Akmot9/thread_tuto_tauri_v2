@@ -41,7 +41,7 @@ pub struct ThreadManager {
 }
 
 impl ThreadManager {
-    pub fn new(app: &tauri::App) -> Self {
+    pub fn new(app: tauri::AppHandle) -> Self {
         let (tx, rx): (Sender<Message>, Receiver<Message>) = mpsc::channel();
 
         // Spawn the default receiver thread
