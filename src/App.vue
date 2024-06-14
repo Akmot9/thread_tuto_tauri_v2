@@ -11,6 +11,7 @@
     <div class="threads-list">
       <div v-for="id in threads" :key="id" class="thread-box">
         <p>Thread ID: {{ id }}</p>
+        <p>Counter: {{ counters[id] }}</p>
         <button @click="stopThread(id)">Stop Thread</button>
       </div>
     </div>
@@ -27,6 +28,7 @@ export default {
     return {
       rate: 1,
       threads: [],
+      counters: {}
     };
   },
   methods: {
@@ -42,7 +44,7 @@ export default {
         listen(`thread-${id}`, (event) => {
           console.log('Événement reçu:', event);
           // Mettre à jour l'état du composant ou effectuer d'autres actions
-          //this.$set(this.counters, id, event.payload);
+          this.counters[id] = event.payload;
         })
           .then(() => {
             console.log(`Écouteur d'événements Tauri configuré avec succès pour le thread ${id}`);
