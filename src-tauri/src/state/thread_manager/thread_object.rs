@@ -1,4 +1,4 @@
-use std::fmt::{self, Display};
+use std::fmt::Display;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager};
 #[derive(Debug, Default, Serialize, Clone, Eq, Hash, PartialEq)]
 pub struct Message {
     id: u32,
-    count: u32
+    count: u32,
 }
 
 impl Message {
@@ -23,7 +23,6 @@ impl std::fmt::Display for Message {
         write!(f, "Message {{ id: {}, count: {} }}", self.id, self.count)
     }
 }
-
 
 /// Structure représentant un thread avec un identifiant, un statut, une fréquence et un handle.
 pub struct TreadObject {
@@ -65,7 +64,7 @@ impl TreadObject {
                     Err(e) => println!("Failed to emit event for thread {}: {}", id, e),
                 }
 
-                let message= Message::new(id,counter);
+                let message = Message::new(id, counter);
                 sender.send(message).unwrap();
 
                 thread::sleep(Duration::from_secs(rate as u64));

@@ -14,11 +14,18 @@
         <p>Counter: {{ counters[id] }}</p>
         <button @click="stopThread(id)" class="stop-button">Stop Thread</button>
       </div>
+      <div>Collection </div>
+      <div v-for="messages in collection" :key="id">
+        <p>Thread ID: {{ id }}</p>
+        <p>Counter: {{ counters[id] }}</p>
+        <button @click="stopThread(id)" class="stop-button">Stop Thread</button>
+      </div>
     </transition-group>
   </div>
 </template>
 
 <script>
+import { event } from '@tauri-apps/api';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
@@ -28,7 +35,8 @@ export default {
     return {
       rate: 1,
       threads: [],
-      counters: {}
+      counters: {},
+      collection: {},
     };
   },
   methods: {
@@ -42,7 +50,7 @@ export default {
       }
       this.threads.forEach(id => {
         listen(`thread-${id}`, (event) => {
-          console.log('Événement reçu:', event);
+          //console.log('Événement reçu:', event);
           // Mettre à jour l'état du composant ou effectuer d'autres actions
           this.counters[id] = event.payload;
         })
@@ -53,6 +61,13 @@ export default {
             console.error(`Erreur lors de la configuration de l'écouteur d'événements Tauri pour le thread ${id}:`, error);
           });
       });
+
+      listen('hashmap', (event) => {
+        console.log('hashmap', event);
+        this.collection = event.payload;
+      }).catch((error) => {
+            console.error(`Erreur lors de la configuration de l'écouteur d'événements Tauri pour le thread ${id}:`, error);
+          })
       
     },
 
@@ -82,10 +97,9 @@ export default {
 </script>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap');
+
 
 #app {
-  font-family: 'Segoe UI', sans-serif;
   text-align: center;
   background-color: #f9f9f9;
   color: #333;

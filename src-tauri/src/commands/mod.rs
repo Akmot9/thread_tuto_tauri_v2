@@ -1,12 +1,15 @@
+use tauri::command;
 use tauri::AppHandle;
 use tauri::State;
-use tauri::command;
 
 use crate::state::ThreadManager;
 
-
 #[command]
-pub async fn add_thread(state: State<'_, ThreadManager>, rate: u32, app: AppHandle) -> Result<u32, String> {
+pub async fn add_thread(
+    state: State<'_, ThreadManager>,
+    rate: u32,
+    app: AppHandle,
+) -> Result<u32, String> {
     Ok(state.add_thread(rate, app))
 }
 

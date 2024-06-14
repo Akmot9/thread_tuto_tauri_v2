@@ -1,9 +1,18 @@
-use std::{collections::HashMap, sync::{mpsc::{self, Receiver, Sender}, Arc, Mutex}, thread, time::Duration};
 use serde::Serialize;
+use serde_json::json;
+use std::{
+    collections::HashMap,
+    sync::{
+        mpsc::{self, Receiver, Sender},
+        Arc, Mutex,
+    },
+    thread,
+    time::Duration,
+};
 use tauri::{AppHandle, Manager};
 
 mod thread_manager;
-use thread_manager::thread_object::{TreadObject, Message};
+use thread_manager::thread_object::{Message, TreadObject};
 
 #[derive(Debug, Default, Serialize, Clone)]
 struct MyHashMap {
@@ -12,16 +21,26 @@ struct MyHashMap {
 
 impl MyHashMap {
     fn new() -> Self {
-        Self { hashmap: Arc::new(Mutex::new(HashMap::new())) }
+        Self {
+            hashmap: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    fn add(&self, massage: Message)  {
+        let mut hashmap_locked = self.hashmap.lock().unwrap();
+                hashmap_locked
+                    .entry(massage)
+                    .and_modify(|e| *e += 1)
+                    .or_insert(1);
+
     }
 
     fn send_serialised(&self, app: AppHandle) -> Result<(), String> {
-        let serialized_hashmap = {
-            let hashmap_locked = self.hashmap.lock().unwrap();
-            hashmap_locked.clone() // Clone the underlying data, not the guard
-        };
+        let hashmap_locked = self.hashmap.lock().unwrap();
+        let hashmap_data: Vec<_> = hashmap_locked.iter().map(|(k, &v)| (k.clone(), v)).collect();
 
-        match app.emit("hashmap", serialized_hashmap) {
+        println!("{:?}",hashmap_data);
+        match app.emit("hashmap", &hashmap_data) {
             Ok(_) => {
                 println!("hashmap emitted successfully");
                 Ok(())
@@ -41,22 +60,16 @@ pub struct ThreadManager {
 }
 
 impl ThreadManager {
-    pub fn new(app: &tauri::App) -> Self {
+    pub fn new(app: AppHandle) -> Self {
         let (tx, rx): (Sender<Message>, Receiver<Message>) = mpsc::channel();
 
         // Spawn the default receiver thread
-        let receiver_handle = thread::spawn(move || {
+        let _receiver_handle = thread::spawn(move || {
             let collection = MyHashMap::new();
             for received in rx {
-                let mut hashmap_locked = collection.hashmap.lock().unwrap();
-                hashmap_locked.entry(received).and_modify(|e| *e += 1).or_insert(1);
-
-                let serialized_hashmap: HashMap<Message, u32> = hashmap_locked.clone();
-                match app.emit("hashmap", serialized_hashmap) {
-                    Ok(_) => println!("hashmap {:?}", hashmap_locked),
-                    Err(e) => println!("Failed to emit event for hashmap"),
-                }
-                thread::sleep(Duration::from_secs(1));  // rate-limit simulation
+                collection.add(received);
+                let _ = collection.send_serialised(app.clone());
+                
             }
         });
 
