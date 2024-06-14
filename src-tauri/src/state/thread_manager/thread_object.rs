@@ -9,18 +9,17 @@ use tauri::{AppHandle, Manager};
 #[derive(Debug, Default, Serialize, Clone, Eq, Hash, PartialEq)]
 pub struct Message {
     id: u32,
-    count: u32,
 }
 
 impl Message {
-    pub fn new(id: u32, count: u32) -> Self {
-        Self { id, count }
+    pub fn new(id: u32) -> Self {
+        Self { id }
     }
 }
 
 impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Message {{ id: {}, count: {} }}", self.id, self.count)
+        write!(f, "Message {{ id: {}}}", self.id)
     }
 }
 
@@ -64,7 +63,7 @@ impl TreadObject {
                     Err(e) => println!("Failed to emit event for thread {}: {}", id, e),
                 }
 
-                let message = Message::new(id, counter);
+                let message = Message::new(id);
                 sender.send(message).unwrap();
 
                 thread::sleep(Duration::from_secs(rate as u64));

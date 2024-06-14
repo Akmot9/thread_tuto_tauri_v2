@@ -3,7 +3,7 @@ use std::{
     collections::HashMap,
     sync::{
         mpsc::{self, Receiver, Sender},
-        Arc, Mutex,
+        Arc, Mutex, MutexGuard,
     },
     thread, time::Duration,
 };
@@ -32,6 +32,14 @@ impl MyHashMap {
                     .or_insert(1);
 
     }
+    fn remove(&self, message: Message) {
+        let mut hashmap_locked = self.hashmap.lock().unwrap();
+        hashmap_locked.remove(&message);
+    }
+    
+    fn lock(&self) -> MutexGuard<HashMap<Message, i32>> {
+        self.hashmap.lock().unwrap()
+    }
 
     fn send_serialised(&self, app: AppHandle, event: &str) -> Result<(), String> {
         let hashmap_locked = self.hashmap.lock().unwrap();
@@ -49,7 +57,9 @@ impl MyHashMap {
             }
         }
     }
+
 }
+
 
 pub struct ThreadManager {
     threads: Arc<Mutex<HashMap<u32, TreadObject>>>,
@@ -64,14 +74,17 @@ impl ThreadManager {
         let app_clone = app.clone();
 
         // Spawn the default receiver thread
+        let fifo_collection = MyHashMap::new();
+
         let _fifo_handle = thread::spawn(move || {
-            let fifo_collection = MyHashMap::new();
             for received in rx_fifo {
                 let fifo = "fifo";
-                fifo_collection.add(received.clone());
-                let _ = fifo_collection.send_serialised(app.clone(), fifo);
+                {
+                    let mut fifo_collection_locked = fifo_collection.lock().unwrap();
+                    fifo_collection_locked.add(received.clone());
+                    let _ = fifo_collection_locked.send_serialised(app.clone(), fifo);
+                }
                 let _ = tx.send(received);
-                
             }
         });
 
@@ -81,6 +94,10 @@ impl ThreadManager {
             for received in rx {
                 let hashmap = "hashmap";
                 collection.add(received);
+                {
+                    let mut fifo_collection_locked = fifo_collection.lock().unwrap();
+                    fifo_collection_locked.remove(received.clone());
+                }
                 let _ = collection.send_serialised(app_clone.clone(), hashmap);
                 thread::sleep(Duration::from_secs(2));
             }
