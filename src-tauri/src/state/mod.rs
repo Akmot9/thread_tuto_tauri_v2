@@ -4,6 +4,8 @@ use std::thread;
 use std::time::Duration;
 use std::collections::HashMap;
 
+use tauri::{AppHandle, Manager};
+
 /// Structure représentant un thread avec un identifiant, un statut, une fréquence et un handle.
 pub struct TreadObject {
     id: u32,
@@ -23,7 +25,7 @@ impl TreadObject {
     /// # Returns
     ///
     /// Retourne une nouvelle instance de `TreadObject`.
-    pub fn new(id: u32, rate: u32) -> Self {
+    pub fn new(id: u32, rate: u32, app: AppHandle) -> Self {
         let status = Arc::new(Mutex::new(true));
         let status_clone = Arc::clone(&status);
 
@@ -39,6 +41,7 @@ impl TreadObject {
                 }
                 counter += 1;
                 println!("Thread {}: counter: {}", id, counter);
+                app.emit(&format!("thread-{}", id), counter).unwrap();
                 thread::sleep(Duration::from_secs(rate as u64));
             }
         });
@@ -96,7 +99,7 @@ impl ThreadManager {
         }
     }
 
-    pub fn add_thread(&self, rate: u32) -> u32 {
+    pub fn add_thread(&self, rate: u32, app: AppHandle) -> u32 {
         let id = {
             let mut next_id = self.next_id.lock().unwrap();
             let id = *next_id;
@@ -104,7 +107,7 @@ impl ThreadManager {
             id
         };
 
-        let thread_object = TreadObject::new(id, rate);
+        let thread_object = TreadObject::new(id, rate, app);
         self.threads.lock().unwrap().insert(id, thread_object);
         id
     }
