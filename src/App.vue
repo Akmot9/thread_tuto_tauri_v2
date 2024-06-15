@@ -16,16 +16,16 @@
       </div>
       <div class="fifo-column">
         <h2>FIFO queue</h2>
-        <div v-for="(message, index) in fifo" :key="index" class="fifo-item">
-          <p>threadID: {{ message.id }}</p>
-          <p>Message: {{ message.count }}</p>
+        <div v-for="(message) in fifo"  class="fifo-item">
+          <p>threadID: {{ message[0] }}</p>
+          <p>Message: {{ message[1] }}</p>
         </div>
       </div>
       <div class="collection-column">
         <h2>Collection</h2>
-        <div v-for="(message, index) in collection" :key="index" class="collection-item">
-          <p>threadID: {{ message.id }}</p>
-          <p>Message: {{ message.count }}</p>
+        <div v-for="(message) in collection"  class="collection-item">
+          <p>threadID: {{ message[0] }}</p>
+          <p>Message: {{ message[1] }}</p>
         </div>
       </div>
     </div>
@@ -70,7 +70,13 @@ export default {
 
       listen('hashmap', (event) => {
         console.log('hashmap', event);
-        this.collection = event.payload.map(([message, value]) => ({ ...message, value }));
+        this.collection = event.payload;
+      }).catch((error) => {
+        console.error('Error setting up Tauri event listener for hashmap:', error);
+      });
+      listen('fifo', (event) => {
+        console.log('fifo', event);
+        this.fifo = event.payload;
       }).catch((error) => {
         console.error('Error setting up Tauri event listener for hashmap:', error);
       });

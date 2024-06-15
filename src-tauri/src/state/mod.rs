@@ -29,6 +29,7 @@ impl ThreadManager {
         let (tx, rx): (Sender<Message>, Receiver<Message>) = mpsc::channel();
         let (tx_fifo, rx_fifo): (Sender<Message>, Receiver<Message>) = mpsc::channel();
         let app_clone = app.clone();
+        
 
         let fifo_collection: Arc<Mutex<HashMap<u32, u32>>> = Arc::new(Mutex::new(HashMap::new()));
         let fifo_collection_clone = fifo_collection.clone();
@@ -49,6 +50,7 @@ impl ThreadManager {
         let fifo_collection_clone = fifo_collection.clone();
         let _receiver_handle = thread::spawn(move || {
             let collection: HashMap<u32, u32> = HashMap::new();
+            
             let mut collection_clone = collection;
             for received in rx {
                 let hashmap = "hashmap";
@@ -56,9 +58,12 @@ impl ThreadManager {
                 {
                     let mut fifo_collection_locked = fifo_collection_clone.lock().unwrap();
                     fifo_collection_locked.remove(&received.id.clone());
+                    println!("fifo after rm: {:?}", fifo_collection_locked)
                 }
                 send_serialised(collection_clone.clone(), app_clone.clone(), hashmap).unwrap();
-                thread::sleep(Duration::from_secs(2));
+                let fifo_clone_for_send = fifo_collection.clone();
+                send_serialised_mutex(fifo_clone_for_send, app_clone.clone(), "fifo").unwrap();
+                thread::sleep(Duration::from_millis(400));
             }
         });
 
@@ -105,10 +110,10 @@ fn send_serialised_mutex(hashmap_mutex: Arc<std::sync::Mutex<HashMap<u32, u32>>>
         .map(|(k, &v)| (k.clone(), v))
         .collect();
 
-    println!("{:?}", hashmap_data);
+    println!("fifo {:?}", hashmap_data);
     match app.emit(event, &hashmap_data) {
         Ok(_) => {
-            println!("hashmap emitted successfully");
+            println!("fifo hashmap emitted successfully");
             Ok(())
         }
         Err(e) => {
@@ -124,7 +129,7 @@ fn send_serialised(hashmap: HashMap<u32, u32>, app: AppHandle, event: &str) -> R
         .map(|(k, &v)| (k.clone(), v))
         .collect();
 
-    println!("{:?}", hashmap_data);
+    println!("hashmap {:?}", hashmap_data);
     match app.emit(event, &hashmap_data) {
         Ok(_) => {
             println!("hashmap emitted successfully");
