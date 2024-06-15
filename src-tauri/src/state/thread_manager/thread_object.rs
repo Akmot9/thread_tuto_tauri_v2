@@ -6,7 +6,7 @@ use std::time::Duration;
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
-#[derive(Debug, Default, Serialize, Clone, Eq, Hash, PartialEq)]
+#[derive(Debug, Default, Serialize, Clone, Eq, Hash, PartialEq, Copy)]
 pub struct Message {
     id: u32,
 }
@@ -48,6 +48,7 @@ impl TreadObject {
 
         let handle = thread::spawn(move || {
             let mut counter = 0;
+            let message = Message::new(id);
             loop {
                 {
                     let status = status_clone.lock().unwrap();
@@ -63,7 +64,6 @@ impl TreadObject {
                     Err(e) => println!("Failed to emit event for thread {}: {}", id, e),
                 }
 
-                let message = Message::new(id);
                 sender.send(message).unwrap();
 
                 thread::sleep(Duration::from_secs(rate as u64));
