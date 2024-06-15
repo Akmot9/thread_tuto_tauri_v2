@@ -8,18 +8,19 @@ use tauri::{AppHandle, Manager};
 
 #[derive(Debug, Default, Serialize, Clone, Eq, Hash, PartialEq, Copy)]
 pub struct Message {
-    id: u32,
+    pub id: u32,
+    pub count: u32
 }
 
 impl Message {
-    pub fn new(id: u32) -> Self {
-        Self { id }
+    pub fn new(id: u32, count: u32) -> Self {
+        Self { id, count }
     }
 }
 
 impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Message {{ id: {}}}", self.id)
+        write!(f, "Message {{ id: {}, count: {}}}", self.id, self.count)
     }
 }
 
@@ -48,7 +49,7 @@ impl TreadObject {
 
         let handle = thread::spawn(move || {
             let mut counter = 0;
-            let message = Message::new(id);
+            let mut message = Message::new(id, counter);
             loop {
                 {
                     let status = status_clone.lock().unwrap();
@@ -58,6 +59,7 @@ impl TreadObject {
                     }
                 }
                 counter += 1;
+                message.count = counter;
                 println!("Thread {}: counter: {}", id, counter);
                 match app.emit(&format!("thread-{}", id), counter) {
                     Ok(_) => println!("Thread {}: counter: {}", id, counter),

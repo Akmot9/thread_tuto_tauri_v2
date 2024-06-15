@@ -3,9 +3,10 @@ use std::{
     collections::HashMap,
     sync::{
         mpsc::{self, Receiver, Sender},
-        Arc, Mutex, MutexGuard,
+        Arc, Mutex,
     },
-    thread, time::Duration,
+    thread,
+    time::Duration,
 };
 use tauri::{AppHandle, Manager};
 
@@ -16,50 +17,6 @@ use thread_manager::thread_object::{Message, TreadObject};
 struct MyHashMap {
     hashmap: Arc<Mutex<HashMap<Message, u32>>>,
 }
-
-impl MyHashMap {
-    fn new() -> Self {
-        Self {
-            hashmap: Arc::new(Mutex::new(HashMap::new())),
-        }
-    }
-
-    fn add(&self, massage: Message)  {
-        let mut hashmap_locked = self.hashmap.lock().unwrap();
-                hashmap_locked
-                    .entry(massage)
-                    .and_modify(|e| *e += 1)
-                    .or_insert(1);
-
-    }
-    fn remove(&self, message: Message) {
-        let mut hashmap_locked = self.hashmap.lock().unwrap();
-        hashmap_locked.remove(&message);
-    }
-    
-    fn lock(&self) -> MutexGuard<HashMap<Message, i32>> {
-        self.hashmap.lock().unwrap()
-    }
-
-    fn send_serialised(&self, app: AppHandle, event: &str) -> Result<(), String> {
-        let hashmap_locked = self.hashmap.lock().unwrap();
-        let hashmap_data: Vec<_> = hashmap_locked.iter().map(|(k, &v)| (k.clone(), v)).collect();
-
-        println!("{:?}",hashmap_data);
-        match app.emit(event, &hashmap_data) {
-            Ok(_) => {
-                println!("hashmap emitted successfully");
-                Ok(())
-            }
-            Err(e) => {
-                println!("Failed to emit event for hashmap: {:?}", e);
-                Err(format!("Failed to emit event: {:?}", e))
-            }
-        }
-    }
-
-}
-
 
 pub struct ThreadManager {
     threads: Arc<Mutex<HashMap<u32, TreadObject>>>,
@@ -73,32 +30,34 @@ impl ThreadManager {
         let (tx_fifo, rx_fifo): (Sender<Message>, Receiver<Message>) = mpsc::channel();
         let app_clone = app.clone();
 
-        // Spawn the default receiver thread
-        let fifo_collection = MyHashMap::new();
-
+        let fifo_collection: Arc<Mutex<HashMap<u32, u32>>> = Arc::new(Mutex::new(HashMap::new()));
+        let fifo_collection_clone = fifo_collection.clone();
         let _fifo_handle = thread::spawn(move || {
             for received in rx_fifo {
                 let fifo = "fifo";
                 {
-                    let mut fifo_collection_locked = fifo_collection.lock().unwrap();
-                    fifo_collection_locked.add(received.clone());
-                    let _ = fifo_collection_locked.send_serialised(app.clone(), fifo);
+                    let mut fifo_collection_locked = fifo_collection_clone.lock().unwrap();
+                    fifo_collection_locked.insert(received.id.clone(), received.count.clone());
                 }
+                let fifo_clone = fifo_collection_clone.clone();
+                send_serialised_mutex(fifo_clone, app.clone(), fifo).unwrap();
                 let _ = tx.send(received);
             }
         });
-
-        // Spawn the default receiver thread
+        
+        // No need to clone fifo_collection here again
+        let fifo_collection_clone = fifo_collection.clone();
         let _receiver_handle = thread::spawn(move || {
-            let collection = MyHashMap::new();
+            let collection: HashMap<u32, u32> = HashMap::new();
+            let mut collection_clone = collection;
             for received in rx {
                 let hashmap = "hashmap";
-                collection.add(received);
+                collection_clone.insert(received.id.clone(), received.count.clone());
                 {
-                    let mut fifo_collection_locked = fifo_collection.lock().unwrap();
-                    fifo_collection_locked.remove(received.clone());
+                    let mut fifo_collection_locked = fifo_collection_clone.lock().unwrap();
+                    fifo_collection_locked.remove(&received.id.clone());
                 }
-                let _ = collection.send_serialised(app_clone.clone(), hashmap);
+                send_serialised(collection_clone.clone(), app_clone.clone(), hashmap).unwrap();
                 thread::sleep(Duration::from_secs(2));
             }
         });
@@ -136,5 +95,44 @@ impl ThreadManager {
 
     pub fn get_thread_ids(&self) -> Vec<u32> {
         self.threads.lock().unwrap().keys().cloned().collect()
+    }
+}
+
+fn send_serialised_mutex(hashmap_mutex: Arc<std::sync::Mutex<HashMap<u32, u32>>>, app: AppHandle, event: &str) -> Result<(), String> {
+    let hashmap_locked = hashmap_mutex.lock().unwrap();
+    let hashmap_data: Vec<_> = hashmap_locked
+        .iter()
+        .map(|(k, &v)| (k.clone(), v))
+        .collect();
+
+    println!("{:?}", hashmap_data);
+    match app.emit(event, &hashmap_data) {
+        Ok(_) => {
+            println!("hashmap emitted successfully");
+            Ok(())
+        }
+        Err(e) => {
+            println!("Failed to emit event for hashmap: {:?}", e);
+            Err(format!("Failed to emit event: {:?}", e))
+        }
+    }
+}
+
+fn send_serialised(hashmap: HashMap<u32, u32>, app: AppHandle, event: &str) -> Result<(), String> {
+    let hashmap_data: Vec<_> = hashmap
+        .iter()
+        .map(|(k, &v)| (k.clone(), v))
+        .collect();
+
+    println!("{:?}", hashmap_data);
+    match app.emit(event, &hashmap_data) {
+        Ok(_) => {
+            println!("hashmap emitted successfully");
+            Ok(())
+        }
+        Err(e) => {
+            println!("Failed to emit event for hashmap: {:?}", e);
+            Err(format!("Failed to emit event: {:?}", e))
+        }
     }
 }
