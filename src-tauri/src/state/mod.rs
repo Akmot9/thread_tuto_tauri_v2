@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     sync::{
         mpsc::{self, Receiver, Sender},
         Arc, Mutex,
@@ -31,14 +31,14 @@ impl ThreadManager {
         let app_clone = app.clone();
         
 
-        let fifo_collection: Arc<Mutex<HashMap<u32, u32>>> = Arc::new(Mutex::new(HashMap::new()));
+        let fifo_collection: Arc<Mutex<VecDeque<Message>>> = Arc::new(Mutex::new(VecDeque::new()));
         let fifo_collection_clone = fifo_collection.clone();
         let _fifo_handle = thread::spawn(move || {
             for received in rx_fifo {
                 let fifo = "fifo";
                 {
                     let mut fifo_collection_locked = fifo_collection_clone.lock().unwrap();
-                    fifo_collection_locked.insert(received.id.clone(), received.count.clone());
+                    fifo_collection_locked.push_back(received.clone());
                 }
                 let fifo_clone = fifo_collection_clone.clone();
                 send_serialised_mutex(fifo_clone, app.clone(), fifo).unwrap();
@@ -57,7 +57,11 @@ impl ThreadManager {
                 collection_clone.insert(received.id.clone(), received.count.clone());
                 {
                     let mut fifo_collection_locked = fifo_collection_clone.lock().unwrap();
-                    fifo_collection_locked.remove(&received.id.clone());
+                    if let Some(message) = fifo_collection_locked.pop_front() {
+                        println!("Rm {} form fifo", message)
+                    } else {
+                        println!("no message in fifo to rm ");
+                    }
                     println!("fifo after rm: {:?}", fifo_collection_locked)
                 }
                 send_serialised(collection_clone.clone(), app_clone.clone(), hashmap).unwrap();
@@ -103,11 +107,10 @@ impl ThreadManager {
     }
 }
 
-fn send_serialised_mutex(hashmap_mutex: Arc<std::sync::Mutex<HashMap<u32, u32>>>, app: AppHandle, event: &str) -> Result<(), String> {
+fn send_serialised_mutex(hashmap_mutex: Arc<std::sync::Mutex<VecDeque<Message>>>, app: AppHandle, event: &str) -> Result<(), String> {
     let hashmap_locked = hashmap_mutex.lock().unwrap();
     let hashmap_data: Vec<_> = hashmap_locked
         .iter()
-        .map(|(k, &v)| (k.clone(), v))
         .collect();
 
     println!("fifo {:?}", hashmap_data);
@@ -126,7 +129,7 @@ fn send_serialised_mutex(hashmap_mutex: Arc<std::sync::Mutex<HashMap<u32, u32>>>
 fn send_serialised(hashmap: HashMap<u32, u32>, app: AppHandle, event: &str) -> Result<(), String> {
     let hashmap_data: Vec<_> = hashmap
         .iter()
-        .map(|(k, &v)| (k.clone(), v))
+        .map(|(&k, &v)| (k, v))
         .collect();
 
     println!("hashmap {:?}", hashmap_data);
