@@ -17,8 +17,8 @@
       <div class="fifo-column">
         <h2>FIFO queue</h2>
         <div v-for="(message) in fifo"  class="fifo-item">
-          <p>threadID: {{ message[0] }}</p>
-          <p>Message: {{ message[1] }}</p>
+          <p>threadID: {{ message.id }}</p>
+          <p>Message: {{ message.count }}</p>
         </div>
       </div>
       <div class="collection-column">
